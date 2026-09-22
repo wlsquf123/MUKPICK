@@ -3,49 +3,102 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Food, PreferenceTag } from "../../data/foods";
 import FoodImage from "../../components/FoodImage";
+import SiteHeader from "../../components/SiteHeader";
+import type { Food, PreferenceTag } from "../../data/foods";
+
+const tagLabels: Record<PreferenceTag, string> = {
+  spicy: "매콤",
+  mild: "순한 맛",
+  hot: "뜨끈",
+  cold: "시원",
+  broth: "국물",
+  "no-broth": "국물 없이",
+  filling: "든든",
+  light: "가볍게",
+  familiar: "익숙한 맛",
+  adventurous: "새로운 맛",
+};
+
+const tagEmojis: Record<PreferenceTag, string> = {
+  spicy: "🌶️",
+  mild: "🙂",
+  hot: "🔥",
+  cold: "❄️",
+  broth: "🍲",
+  "no-broth": "🥢",
+  filling: "🍚",
+  light: "🥗",
+  familiar: "🏠",
+  adventurous: "✨",
+};
 
 export default function ResultPage() {
   const router = useRouter();
 
   const [foods, setFoods] = useState<Food[]>([]);
-  const [selectedFoodId, setSelectedFoodId] = useState<string | null>(null);
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [error, setError] = useState("");
+  const [selectedTags, setSelectedTags] = useState<PreferenceTag[]>([]);
+  const [selectedFoodId, setSelectedFoodId] =
+    useState<string | null>(null);
+
+  const [isCreatingRoom, setIsCreatingRoom] =
+    useState(false);
+
+  const [isRerolling, setIsRerolling] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     const savedRecommendations =
       sessionStorage.getItem("recommendations");
 
-    if (!savedRecommendations) {
+    const savedTags =
+      sessionStorage.getItem("selectedTags");
+
+    if (!savedRecommendations || !savedTags) {
       router.push("/preference");
       return;
     }
 
-    const parsedFoods: Food[] = JSON.parse(savedRecommendations);
+    const parsedFoods: Food[] =
+      JSON.parse(savedRecommendations);
+
+    const parsedTags: PreferenceTag[] =
+      JSON.parse(savedTags);
 
     setFoods(parsedFoods);
+    setSelectedTags(parsedTags);
 
     const savedSelectedFood =
       sessionStorage.getItem("selectedFood");
 
     if (savedSelectedFood) {
-      const selectedFood: Food = JSON.parse(savedSelectedFood);
+      const selectedFood: Food =
+        JSON.parse(savedSelectedFood);
 
-      const isCurrentCandidate = parsedFoods.some(
-        (food) => food.id === selectedFood.id
-      );
+      const isCurrentCandidate =
+        parsedFoods.some(
+          (food) =>
+            food.id === selectedFood.id
+        );
 
       if (isCurrentCandidate) {
-        setSelectedFoodId(selectedFood.id);
+        setSelectedFoodId(
+          selectedFood.id
+        );
       } else {
-        sessionStorage.removeItem("selectedFood");
+        sessionStorage.removeItem(
+          "selectedFood"
+        );
       }
     }
   }, [router]);
 
-  const handleSelectFood = (food: Food) => {
+  const handleSelectFood = (
+    food: Food
+  ) => {
     setSelectedFoodId(food.id);
 
     sessionStorage.setItem(
@@ -56,12 +109,96 @@ export default function ResultPage() {
     setError("");
   };
 
+  const handleReroll =
+    async () => {
+      try {
+        setIsRerolling(true);
+        setError("");
+
+        if (selectedTags.length === 0) {
+          throw new Error(
+            "취향 정보를 찾을 수 없습니다."
+          );
+        }
+
+        const response =
+          await fetch(
+            "/api/recommendations",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                selectedTags,
+
+                excludeFoodIds:
+                  foods.map(
+                    (food) =>
+                      food.id
+                  ),
+              }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "새로운 추천을 불러오지 못했습니다."
+          );
+        }
+
+        if (
+          !data.recommendations ||
+          data.recommendations.length < 2
+        ) {
+          throw new Error(
+            "새로운 후보를 충분히 찾지 못했습니다."
+          );
+        }
+
+        const newFoods: Food[] =
+          data.recommendations;
+
+        setFoods(newFoods);
+        setSelectedFoodId(null);
+
+        sessionStorage.setItem(
+          "recommendations",
+          JSON.stringify(newFoods)
+        );
+
+        sessionStorage.removeItem(
+          "selectedFood"
+        );
+      } catch (error) {
+        console.error(error);
+
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError(
+            "새로운 메뉴를 추천하는 중 오류가 발생했습니다."
+          );
+        }
+      } finally {
+        setIsRerolling(false);
+      }
+    };
+
   const getVoterToken = () => {
     let voterToken =
-      localStorage.getItem("mukpickVoterToken");
+      localStorage.getItem(
+        "mukpickVoterToken"
+      );
 
     if (!voterToken) {
-      voterToken = crypto.randomUUID();
+      voterToken =
+        crypto.randomUUID();
 
       localStorage.setItem(
         "mukpickVoterToken",
@@ -72,66 +209,80 @@ export default function ResultPage() {
     return voterToken;
   };
 
-  const handleCreateRoom = async () => {
-    if (!selectedFoodId) {
-      return;
-    }
-
-    try {
-      setIsCreatingRoom(true);
-      setError("");
-
-      const savedTags =
-        sessionStorage.getItem("selectedTags");
-
-      if (!savedTags) {
-        throw new Error("취향 정보가 없습니다.");
+  const handleCreateRoom =
+    async () => {
+      if (!selectedFoodId) {
+        return;
       }
 
-      const preferenceAnswers: PreferenceTag[] =
-        JSON.parse(savedTags);
+      try {
+        setIsCreatingRoom(true);
+        setError("");
 
-      const voterToken = getVoterToken();
+        if (selectedTags.length === 0) {
+          throw new Error(
+            "취향 정보가 없습니다."
+          );
+        }
 
-      const response = await fetch("/api/rooms", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          candidateFoodIds: foods.map(
-            (food) => food.id
-          ),
-          preferenceAnswers,
-          hostFoodId: selectedFoodId,
-          voterToken,
-        }),
-      });
+        const voterToken =
+          getVoterToken();
 
-      const data = await response.json();
+        const response =
+          await fetch(
+            "/api/rooms",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                candidateFoodIds:
+                  foods.map(
+                    (food) =>
+                      food.id
+                  ),
 
-      if (!response.ok) {
-        throw new Error(
-          data.message || "방 생성에 실패했습니다."
+                preferenceAnswers:
+                  selectedTags,
+
+                hostFoodId:
+                  selectedFoodId,
+
+                voterToken,
+              }),
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "방 생성에 실패했습니다."
+          );
+        }
+
+        sessionStorage.setItem(
+          "shareToken",
+          data.shareToken
         );
+
+        router.push(
+          `/share/${data.shareToken}`
+        );
+      } catch (error) {
+        console.error(error);
+
+        setError(
+          "같이 결정하기 방을 만들지 못했어요. 다시 시도해주세요."
+        );
+
+        setIsCreatingRoom(false);
       }
-
-      sessionStorage.setItem(
-        "shareToken",
-        data.shareToken
-      );
-
-      router.push(`/share/${data.shareToken}`);
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        "같이 결정하기 방을 만들지 못했어요. 다시 시도해주세요."
-      );
-
-      setIsCreatingRoom(false);
-    }
-  };
+    };
 
   if (foods.length < 2) {
     return (
@@ -154,39 +305,16 @@ export default function ResultPage() {
         minHeight: "100vh",
         background: "#fff9f4",
         color: "#201a17",
-        padding: "40px 24px",
-        fontFamily: "Arial, sans-serif",
+        padding: "32px 16px 60px",
+        fontFamily:
+          "Arial, sans-serif",
       }}
     >
-      <header
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto 65px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <strong
-          style={{
-            fontSize: "24px",
-            color: "#ff5a36",
-          }}
-        >
-          MUKPICK
-        </strong>
-
-        <span
-          style={{
-            color: "#746964",
-          }}
-        >
-          오늘 메뉴 같이 고르기
-        </span>
-      </header>
+      <SiteHeader label="추천 결과" />
 
       <section
         style={{
+          width: "100%",
           maxWidth: "900px",
           margin: "0 auto",
           textAlign: "center",
@@ -203,7 +331,9 @@ export default function ResultPage() {
 
         <h1
           style={{
-            fontSize: "42px",
+            fontSize:
+              "clamp(30px, 6vw, 42px)",
+            lineHeight: 1.25,
             marginBottom: "12px",
           }}
         >
@@ -213,50 +343,76 @@ export default function ResultPage() {
         <p
           style={{
             color: "#746964",
+            lineHeight: 1.6,
             marginBottom: "40px",
           }}
         >
-          먼저 하나 골라보고, 애매하면 친구한테 링크를 보내보세요.
+          선택한 취향을 기준으로 잘 맞는
+          메뉴를 골라봤어요.
         </p>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(280px, 1fr))",
             gap: "24px",
+            width: "100%",
+            alignItems: "stretch",
           }}
         >
           {foods.map((food) => {
             const isSelected =
-              selectedFoodId === food.id;
+              selectedFoodId ===
+              food.id;
+
+            const matchedTags =
+              selectedTags.filter(
+                (tag) =>
+                  food.tags.includes(
+                    tag
+                  )
+              );
 
             return (
               <article
                 key={food.id}
                 style={{
+                  minWidth: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
                   background: "#fffdfb",
+
                   border: isSelected
                     ? "2px solid #ff5a36"
                     : "1px solid #eadfd8",
+
                   borderRadius: "24px",
-                  padding: "32px",
+
+                  padding:
+                    "clamp(20px, 4vw, 32px)",
+
                   textAlign: "left",
                   overflow: "hidden",
-                  transition:
-                    "border 0.2s ease, transform 0.2s ease",
+                  boxSizing: "border-box",
                 }}
               >
                 <div
                   style={{
                     width: "100%",
-                    height: "240px",
+                    aspectRatio: "4 / 3",
+                    maxHeight: "280px",
                     borderRadius: "18px",
                     background: "#f5ebe5",
                     overflow: "hidden",
                     marginBottom: "24px",
+                    flexShrink: 0,
                   }}
                 >
-                  <FoodImage food={food} />
+                  <FoodImage
+                    food={food}
+                  />
                 </div>
 
                 <p
@@ -271,8 +427,10 @@ export default function ResultPage() {
 
                 <h2
                   style={{
-                    fontSize: "30px",
-                    margin: "8px 0 12px",
+                    fontSize:
+                      "clamp(25px, 5vw, 30px)",
+                    margin:
+                      "8px 0 12px",
                   }}
                 >
                   {food.name}
@@ -283,51 +441,203 @@ export default function ResultPage() {
                     color: "#746964",
                     minHeight: "48px",
                     lineHeight: 1.6,
+                    margin: "0 0 20px",
                   }}
                 >
                   {food.description}
                 </p>
 
-                <button
-                  onClick={() =>
-                    handleSelectFood(food)
-                  }
+                <div
                   style={{
-                    width: "100%",
-                    marginTop: "20px",
-                    padding: "16px",
-                    border: 0,
-                    borderRadius: "14px",
-                    background: isSelected
-                      ? "#2b211d"
-                      : "#ff5a36",
-                    color: "white",
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    cursor: "pointer",
+                    padding: "18px",
+                    background: "#fff7f2",
+                    borderRadius: "16px",
+                    minHeight: "180px",
+                    boxSizing: "border-box",
                   }}
                 >
-                  {isSelected
-                    ? "내 선택 완료"
-                    : "이걸로 할래"}
-                </button>
+                  <p
+                    style={{
+                      margin:
+                        "0 0 12px",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "#ff5a36",
+                    }}
+                  >
+                    먹픽 추천 이유
+                  </p>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                    }}
+                  >
+                    {matchedTags.map(
+                      (tag) => (
+                        <span
+                          key={tag}
+                          style={{
+                            padding:
+                              "7px 10px",
+                            borderRadius:
+                              "999px",
+                            background:
+                              "#ffffff",
+                            border:
+                              "1px solid #f0d9cc",
+                            fontSize: "13px",
+                            color: "#5f514b",
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                        >
+                          {tagEmojis[tag]}{" "}
+                          {tagLabels[tag]}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  <p
+                    style={{
+                      margin: "14px 0 0",
+                      color: "#746964",
+                      fontSize: "14px",
+                    }}
+                  >
+                    내가 고른 취향과{" "}
+                    <strong
+                      style={{
+                        color: "#ff5a36",
+                      }}
+                    >
+                      {matchedTags.length}개
+                    </strong>
+                    가 일치해요.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "auto",
+                    paddingTop: "20px",
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      handleSelectFood(
+                        food
+                      )
+                    }
+                    disabled={
+                      isRerolling
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "16px",
+                      border: 0,
+                      borderRadius: "14px",
+
+                      background:
+                        isSelected
+                          ? "#2b211d"
+                          : "#ff5a36",
+
+                      color: "white",
+                      fontSize: "16px",
+                      fontWeight: 700,
+
+                      cursor:
+                        isRerolling
+                          ? "not-allowed"
+                          : "pointer",
+
+                      opacity:
+                        isRerolling
+                          ? 0.6
+                          : 1,
+                    }}
+                  >
+                    {isSelected
+                      ? "내 선택 완료"
+                      : "이걸로 할래"}
+                  </button>
+                </div>
               </article>
             );
           })}
         </div>
 
+        <div
+          style={{
+            marginTop: "28px",
+          }}
+        >
+          <p
+            style={{
+              color: "#746964",
+              fontSize: "14px",
+              marginBottom: "12px",
+            }}
+          >
+            둘 다 지금은 안 끌리나요?
+          </p>
+
+          <button
+            onClick={handleReroll}
+            disabled={
+              isRerolling ||
+              isCreatingRoom
+            }
+            style={{
+              width: "min(100%, 320px)",
+              padding: "14px 28px",
+              border:
+                "1px solid #eadfd8",
+              borderRadius: "14px",
+              background: "#fffdfb",
+              color: "#2b211d",
+              fontSize: "15px",
+              fontWeight: 700,
+
+              cursor:
+                isRerolling ||
+                isCreatingRoom
+                  ? "not-allowed"
+                  : "pointer",
+
+              opacity:
+                isRerolling ||
+                isCreatingRoom
+                  ? 0.6
+                  : 1,
+            }}
+          >
+            {isRerolling
+              ? "새 메뉴 찾는 중..."
+              : "↻ 다른 메뉴 추천받기"}
+          </button>
+        </div>
+
         {selectedFoodId && (
           <div
             style={{
-              marginTop: "32px",
+              marginTop: "28px",
               display: "flex",
               justifyContent: "center",
             }}
           >
             <button
               onClick={handleCreateRoom}
-              disabled={isCreatingRoom}
+              disabled={
+                isCreatingRoom ||
+                isRerolling
+              }
               style={{
+                width: "min(100%, 320px)",
                 padding: "17px 40px",
                 border: 0,
                 borderRadius: "14px",
@@ -335,12 +645,18 @@ export default function ResultPage() {
                 color: "white",
                 fontSize: "17px",
                 fontWeight: 700,
-                cursor: isCreatingRoom
-                  ? "not-allowed"
-                  : "pointer",
-                opacity: isCreatingRoom
-                  ? 0.6
-                  : 1,
+
+                cursor:
+                  isCreatingRoom ||
+                  isRerolling
+                    ? "not-allowed"
+                    : "pointer",
+
+                opacity:
+                  isCreatingRoom ||
+                  isRerolling
+                    ? 0.6
+                    : 1,
               }}
             >
               {isCreatingRoom

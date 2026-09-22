@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getFoodImageUrl } from "../../../lib/foodImage";
 
 import type { Food } from "../../../data/foods";
+import FoodImage from "../../../components/FoodImage";
 
 interface ResultItem {
   foodId: string;
@@ -62,7 +62,6 @@ export default function LiveResultPage() {
         setError("");
       } catch (error) {
         console.error(error);
-
         setError("투표 결과를 불러오지 못했어요.");
       } finally {
         setIsLoading(false);
@@ -93,7 +92,9 @@ export default function LiveResultPage() {
         localStorage.getItem("mukpickVoterToken");
 
       if (!voterToken) {
-        throw new Error("호스트 정보를 찾을 수 없습니다.");
+        throw new Error(
+          "호스트 정보를 찾을 수 없습니다."
+        );
       }
 
       const response = await fetch(
@@ -143,6 +144,8 @@ export default function LiveResultPage() {
           display: "grid",
           placeItems: "center",
           background: "#fff9f4",
+          padding: "24px",
+          textAlign: "center",
         }}
       >
         투표 결과를 불러오는 중...
@@ -158,7 +161,9 @@ export default function LiveResultPage() {
           display: "grid",
           placeItems: "center",
           background: "#fff9f4",
+          padding: "24px",
           color: "#c0392b",
+          textAlign: "center",
         }}
       >
         {error}
@@ -171,7 +176,9 @@ export default function LiveResultPage() {
   }
 
   const maxVotes = Math.max(
-    ...data.results.map((item) => item.voteCount),
+    ...data.results.map(
+      (item) => item.voteCount
+    ),
     1
   );
 
@@ -181,15 +188,18 @@ export default function LiveResultPage() {
         minHeight: "100vh",
         background: "#fff9f4",
         color: "#201a17",
-        padding: "40px 24px",
+        padding: "32px 16px 60px",
         fontFamily: "Arial, sans-serif",
       }}
     >
       <header
         style={{
+          width: "100%",
           maxWidth: "1100px",
           margin: "0 auto 60px",
           display: "flex",
+          flexWrap: "wrap",
+          gap: "12px",
           justifyContent: "space-between",
           alignItems: "center",
         }}
@@ -206,6 +216,7 @@ export default function LiveResultPage() {
         <span
           style={{
             color: "#746964",
+            fontSize: "14px",
           }}
         >
           실시간 투표 결과
@@ -214,6 +225,7 @@ export default function LiveResultPage() {
 
       <section
         style={{
+          width: "100%",
           maxWidth: "900px",
           margin: "0 auto",
           textAlign: "center",
@@ -230,7 +242,8 @@ export default function LiveResultPage() {
 
         <h1
           style={{
-            fontSize: "42px",
+            fontSize: "clamp(30px, 6vw, 42px)",
+            lineHeight: 1.25,
             margin: "10px 0 14px",
           }}
         >
@@ -240,17 +253,28 @@ export default function LiveResultPage() {
         <p
           style={{
             color: "#746964",
+            lineHeight: 1.6,
             marginBottom: "42px",
           }}
         >
-          현재 총 {data.totalVotes}명이 선택했어요.
+          현재 총{" "}
+          <strong
+            style={{
+              color: "#ff5a36",
+            }}
+          >
+            {data.totalVotes}명
+          </strong>
+          이 선택했어요.
         </p>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(280px, 1fr))",
             gap: "24px",
+            width: "100%",
           }}
         >
           {data.results.map((item) => {
@@ -261,16 +285,22 @@ export default function LiveResultPage() {
               <article
                 key={item.foodId}
                 style={{
+                  minWidth: 0,
                   background: "#fffdfb",
                   border: "1px solid #eadfd8",
                   borderRadius: "24px",
-                  padding: "30px",
+                  padding:
+                    "clamp(20px, 4vw, 30px)",
                   textAlign: "left",
+                  boxSizing: "border-box",
+                  overflow: "hidden",
                 }}
               >
                 <div
                   style={{
-                    height: "220px",
+                    width: "100%",
+                    aspectRatio: "4 / 3",
+                    maxHeight: "260px",
                     borderRadius: "18px",
                     background: "#f5ebe5",
                     overflow: "hidden",
@@ -278,16 +308,8 @@ export default function LiveResultPage() {
                   }}
                 >
                   {item.food ? (
-                    <img
-                      src={getFoodImageUrl(item.food)}
-                      alt={item.food.name}
-                      loading="lazy"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
+                    <FoodImage
+                      food={item.food}
                     />
                   ) : (
                     <div
@@ -296,10 +318,11 @@ export default function LiveResultPage() {
                         height: "100%",
                         display: "grid",
                         placeItems: "center",
-                        color: "#746964",
+                        background: "#f5ebe5",
+                        fontSize: "56px",
                       }}
                     >
-                      이미지 없음
+                      🍽️
                     </div>
                   )}
                 </div>
@@ -308,6 +331,7 @@ export default function LiveResultPage() {
                   style={{
                     color: "#ff5a36",
                     fontWeight: 700,
+                    margin: 0,
                   }}
                 >
                   {item.food?.category || "메뉴"}
@@ -315,19 +339,24 @@ export default function LiveResultPage() {
 
                 <h2
                   style={{
-                    fontSize: "30px",
+                    fontSize:
+                      "clamp(25px, 5vw, 30px)",
                     margin: "8px 0 20px",
                   }}
                 >
-                  {item.food?.name || item.foodId}
+                  {item.food?.name ||
+                    item.foodId}
                 </h2>
 
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                    justifyContent:
+                      "space-between",
                     alignItems: "center",
-                    marginBottom: "10px",
+                    marginBottom: "12px",
                   }}
                 >
                   <span
@@ -362,7 +391,8 @@ export default function LiveResultPage() {
                       height: "100%",
                       background: "#ff5a36",
                       borderRadius: "999px",
-                      transition: "width 0.3s ease",
+                      transition:
+                        "width 0.3s ease",
                     }}
                   />
                 </div>
@@ -384,7 +414,9 @@ export default function LiveResultPage() {
                     `/final/${shareToken}`;
                 }}
                 style={{
-                  padding: "17px 36px",
+                  width:
+                    "min(100%, 320px)",
+                  padding: "17px 30px",
                   border: 0,
                   borderRadius: "14px",
                   background: "#2b211d",
@@ -403,7 +435,9 @@ export default function LiveResultPage() {
                     `/tiebreak/${shareToken}`;
                 }}
                 style={{
-                  padding: "17px 36px",
+                  width:
+                    "min(100%, 320px)",
+                  padding: "17px 30px",
                   border: 0,
                   borderRadius: "14px",
                   background: "#ff5a36",
@@ -420,7 +454,9 @@ export default function LiveResultPage() {
                 onClick={handleFinalize}
                 disabled={isFinalizing}
                 style={{
-                  padding: "17px 36px",
+                  width:
+                    "min(100%, 320px)",
+                  padding: "17px 30px",
                   border: 0,
                   borderRadius: "14px",
                   background: "#2b211d",
@@ -430,7 +466,9 @@ export default function LiveResultPage() {
                   cursor: isFinalizing
                     ? "not-allowed"
                     : "pointer",
-                  opacity: isFinalizing ? 0.6 : 1,
+                  opacity: isFinalizing
+                    ? 0.6
+                    : 1,
                 }}
               >
                 {isFinalizing

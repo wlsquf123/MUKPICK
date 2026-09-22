@@ -1,9 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 
 export default function HomePage() {
   const router = useRouter();
+
+  const { data: session, status } = useSession();
+
+  const handleStart = () => {
+    sessionStorage.removeItem("recommendations");
+    sessionStorage.removeItem("selectedTags");
+    sessionStorage.removeItem("selectedFood");
+    sessionStorage.removeItem("shareToken");
+
+    router.push("/preference");
+  };
+
+  const handleLogout = async () => {
+    await signOut({
+      redirect: false,
+    });
+
+    router.refresh();
+  };
 
   return (
     <main
@@ -11,231 +31,403 @@ export default function HomePage() {
         minHeight: "100vh",
         background: "#fff9f4",
         color: "#201a17",
+        padding: "28px 16px 48px",
         fontFamily: "Arial, sans-serif",
+        boxSizing: "border-box",
       }}
     >
       <header
         style={{
-          maxWidth: "1180px",
+          width: "100%",
+          maxWidth: "1100px",
           margin: "0 auto",
-          padding: "34px 28px",
           display: "flex",
+          flexWrap: "wrap",
+          gap: "16px",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
         <strong
           style={{
-            fontSize: "26px",
+            fontSize: "24px",
             color: "#ff5a36",
-            letterSpacing: "-0.5px",
           }}
         >
           MUKPICK
         </strong>
 
-        <span
+        <div
           style={{
-            fontSize: "14px",
-            color: "#746964",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px",
+            alignItems: "center",
+            justifyContent: "flex-end",
           }}
         >
-          오늘 메뉴, 같이 골라요
-        </span>
+          {status === "loading" ? (
+            <span
+              style={{
+                color: "#9a8f89",
+                fontSize: "14px",
+              }}
+            >
+              로그인 확인 중...
+            </span>
+          ) : session?.user ? (
+            <>
+              <span
+                style={{
+                  color: "#746964",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                }}
+              >
+                {session.user.name}님
+              </span>
+
+              {/* 음식 랭킹 */}
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/ranking");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid #eadfd8",
+                  borderRadius: "12px",
+                  background: "#fffdfb",
+                  color: "#201a17",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🏆 음식 랭킹
+              </button>
+
+              {/* 내 먹픽 */}
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/mypick");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid #eadfd8",
+                  borderRadius: "12px",
+                  background: "#fffdfb",
+                  color: "#201a17",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🍽️ 내 먹픽
+              </button>
+
+              {/* 사용자 정보 */}
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/account");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid #eadfd8",
+                  borderRadius: "12px",
+                  background: "#fffdfb",
+                  color: "#201a17",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                👤 사용자 정보
+              </button>
+
+              {/* 로그아웃 */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: "12px",
+                  background: "#2b211d",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              {/* 비로그인 상태에서도 랭킹 조회 가능 */}
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/ranking");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid #eadfd8",
+                  borderRadius: "12px",
+                  background: "#fffdfb",
+                  color: "#201a17",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🏆 음식 랭킹
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/login");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: "1px solid #eadfd8",
+                  borderRadius: "12px",
+                  background: "#fffdfb",
+                  color: "#201a17",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                로그인
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/signup");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  border: 0,
+                  borderRadius: "12px",
+                  background: "#ff5a36",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                회원가입
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       <section
         style={{
-          maxWidth: "1180px",
-          minHeight: "680px",
+          width: "100%",
+          maxWidth: "1100px",
+          minHeight: "calc(100vh - 130px)",
           margin: "0 auto",
-          padding: "40px 28px 80px",
           display: "grid",
-          gridTemplateColumns: "1.05fr 0.95fr",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "48px",
           alignItems: "center",
-          gap: "70px",
+          padding: "60px 0",
+          boxSizing: "border-box",
         }}
       >
-        <div>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "620px",
+          }}
+        >
           <p
             style={{
-              display: "inline-block",
-              margin: "0 0 22px",
-              padding: "9px 14px",
-              borderRadius: "999px",
-              background: "#fff0e9",
+              margin: "0 0 16px",
               color: "#ff5a36",
-              fontSize: "14px",
+              fontSize: "15px",
               fontWeight: 700,
             }}
           >
-            오늘 뭐 먹지?
+            취향 기반 메뉴 추천
           </p>
 
           <h1
             style={{
               margin: 0,
-              fontSize: "62px",
-              lineHeight: 1.15,
-              letterSpacing: "-2px",
+              fontSize: "clamp(42px, 8vw, 74px)",
+              lineHeight: 1.08,
+              letterSpacing: "-0.04em",
+              wordBreak: "keep-all",
             }}
           >
-            고민은 줄이고,
+            오늘 뭐 먹을지,
             <br />
-            <span
-              style={{
-                color: "#ff5a36",
-              }}
-            >
-              메뉴는 빠르게.
-            </span>
+            먹픽이 골라줄게.
           </h1>
 
           <p
             style={{
-              maxWidth: "540px",
-              margin: "26px 0 0",
+              maxWidth: "520px",
+              margin: "28px 0 0",
               color: "#746964",
-              fontSize: "19px",
-              lineHeight: 1.7,
+              fontSize: "clamp(16px, 3vw, 19px)",
+              lineHeight: 1.8,
+              wordBreak: "keep-all",
             }}
           >
-            몇 가지 취향만 고르면 오늘 먹기 좋은 메뉴를
-            두 개로 좁혀드려요.
-            <br />
-            혼자 결정하기 어렵다면 친구에게 링크를 보내
-            같이 투표할 수도 있어요.
+            간단한 취향 질문에 답하면 지금 먹기 좋은 메뉴
+            2개를 추천해드려요. 혼자 고르기 어렵다면 친구와
+            함께 투표해서 결정할 수도 있어요.
           </p>
 
-          <button
-            onClick={() => {
-              sessionStorage.removeItem("recommendations");
-              sessionStorage.removeItem("selectedTags");
-              sessionStorage.removeItem("selectedFood");
-              sessionStorage.removeItem("shareToken");
+          {session?.user && (
+            <div
+              style={{
+                marginTop: "24px",
+                padding: "16px 18px",
+                maxWidth: "420px",
+                background: "#fff7f2",
+                border: "1px solid #f0d9cc",
+                borderRadius: "16px",
+                color: "#5f514b",
+                lineHeight: 1.6,
+                fontSize: "14px",
+              }}
+            >
+              <strong
+                style={{
+                  color: "#ff5a36",
+                }}
+              >
+                {session.user.name}님,
+              </strong>{" "}
+              오늘 메뉴도 먹픽으로 골라볼까요?
+            </div>
+          )}
 
-              router.push("/preference");
-            }}
+          <button
+            onClick={handleStart}
             style={{
-              marginTop: "38px",
-              padding: "18px 34px",
+              width: "min(100%, 340px)",
+              marginTop: "36px",
+              padding: "18px 28px",
               border: 0,
               borderRadius: "16px",
               background: "#ff5a36",
-              color: "white",
-              fontSize: "18px",
+              color: "#ffffff",
+              fontSize: "17px",
               fontWeight: 700,
               cursor: "pointer",
-              boxShadow: "0 12px 30px rgba(255, 90, 54, 0.2)",
+              boxShadow:
+                "0 10px 24px rgba(255, 90, 54, 0.18)",
             }}
           >
-            메뉴 추천 시작하기 →
+            내 취향으로 메뉴 추천받기
           </button>
 
-          <div
-            style={{
-              marginTop: "42px",
-              display: "flex",
-              gap: "28px",
-              color: "#746964",
-              fontSize: "14px",
-            }}
-          >
-            <span>✓ 로그인 없이</span>
-            <span>✓ 빠른 취향 선택</span>
-            <span>✓ 친구와 함께 투표</span>
-          </div>
+          {!session?.user && (
+            <p
+              style={{
+                marginTop: "16px",
+                color: "#9a8f89",
+                fontSize: "13px",
+              }}
+            >
+              로그인 없이도 바로 시작할 수 있어요.
+            </p>
+          )}
         </div>
 
         <div
           style={{
-            position: "relative",
-            minHeight: "520px",
-            display: "grid",
-            placeItems: "center",
+            width: "100%",
+            maxWidth: "460px",
+            margin: "0 auto",
           }}
         >
           <div
             style={{
-              width: "450px",
-              height: "450px",
-              borderRadius: "50%",
-              background: "#fff0e9",
+              position: "relative",
+              width: "100%",
+              aspectRatio: "1 / 1",
               display: "grid",
               placeItems: "center",
+              background: "#fff0e8",
+              borderRadius: "50%",
+              boxSizing: "border-box",
             }}
           >
             <div
               style={{
-                width: "320px",
-                padding: "30px",
-                borderRadius: "30px",
-                background: "#fffdfb",
-                border: "1px solid #eadfd8",
-                boxShadow: "0 18px 50px rgba(60, 35, 25, 0.08)",
-                textAlign: "center",
+                fontSize: "clamp(110px, 24vw, 190px)",
+                lineHeight: 1,
+                filter:
+                  "drop-shadow(0 18px 18px rgba(76, 47, 34, 0.12))",
               }}
             >
-              <div
-                style={{
-                  fontSize: "100px",
-                  marginBottom: "18px",
-                }}
-              >
-                🍜
-              </div>
-
-              <strong
-                style={{
-                  display: "block",
-                  fontSize: "26px",
-                  marginBottom: "8px",
-                }}
-              >
-                오늘의 먹픽
-              </strong>
-
-              <span
-                style={{
-                  color: "#746964",
-                  fontSize: "15px",
-                }}
-              >
-                취향을 골라 두 메뉴로 좁혀보세요
-              </span>
+              🍜
             </div>
-          </div>
 
-          <div
-            style={{
-              position: "absolute",
-              top: "65px",
-              right: "10px",
-              padding: "14px 18px",
-              borderRadius: "16px",
-              background: "#fffdfb",
-              border: "1px solid #eadfd8",
-              fontWeight: 700,
-              transform: "rotate(5deg)",
-            }}
-          >
-            🌶️ 매콤하게?
-          </div>
+            <div
+              style={{
+                position: "absolute",
+                top: "12%",
+                right: "8%",
+                padding: "10px 14px",
+                background: "#fffdfb",
+                border: "1px solid #eadfd8",
+                borderRadius: "999px",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#ff5a36",
+              }}
+            >
+              🌶️ 매콤
+            </div>
 
-          <div
-            style={{
-              position: "absolute",
-              bottom: "75px",
-              left: "0",
-              padding: "14px 18px",
-              borderRadius: "16px",
-              background: "#fffdfb",
-              border: "1px solid #eadfd8",
-              fontWeight: 700,
-              transform: "rotate(-5deg)",
-            }}
-          >
-            👥 같이 고르기
+            <div
+              style={{
+                position: "absolute",
+                bottom: "14%",
+                left: "5%",
+                padding: "10px 14px",
+                background: "#fffdfb",
+                border: "1px solid #eadfd8",
+                borderRadius: "999px",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#5f514b",
+              }}
+            >
+              🍚 든든
+            </div>
+
+            <div
+              style={{
+                position: "absolute",
+                bottom: "6%",
+                right: "12%",
+                padding: "10px 14px",
+                background: "#fffdfb",
+                border: "1px solid #eadfd8",
+                borderRadius: "999px",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "#5f514b",
+              }}
+            >
+              ✨ 취향 추천
+            </div>
           </div>
         </div>
       </section>
